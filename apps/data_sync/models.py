@@ -1,0 +1,78 @@
+from django.db import models
+
+# Create your models here.
+class Cashier(models.Model):
+    id = models.AutoField(primary_key= True)
+
+    closeDate = models.CharField()
+    closeTime = models.CharField()
+    legacyId = models.IntegerField()
+    location = models.CharField()
+    locationId = models.IntegerField()
+    openDate = models.CharField()
+    openStatus = models.BooleanField()
+    openTime = models.CharField()
+    operator = models.CharField()
+    totalSalesQuantity = models.IntegerField()
+    totalSalesValue = models.DecimalField(decimal_places= 2, max_digits= 10)
+    unit = models.CharField()
+    
+    class Meta:
+        managed = False
+        db_table = 'Cashier'
+
+    def __str__(self):
+        return f'#{self.legacyId} - {self.locationId} - {self.openDate} - {self.operator}'
+    
+    def update_or_create(fetched_cashier):
+        return Cashier.objects.update_or_create(
+            legacyId = fetched_cashier['SQCAIXA'],
+            locationId = fetched_cashier['CDLOCVENDA'],
+            openDate = fetched_cashier['DTABERTURA'],
+
+            defaults = {
+                'closeDate': fetched_cashier['DTFECHAMEN'],
+                'closeTime': fetched_cashier['HRFECHAMEN'],
+                'location': fetched_cashier['DSLOCVENDA'],
+                'openTime': fetched_cashier['HRABERTURA'],
+                'openStatus': fetched_cashier['STCAIXA'] == '0',
+                'operator': fetched_cashier['NMPESSOA'],
+                'totalSalesQuantity': fetched_cashier['QTDVENDAS'],
+                'totalSalesValue': fetched_cashier['TOTALVENDIDO'].replace(',', '.') if fetched_cashier['TOTALVENDIDO'] else 0,
+                'unit': fetched_cashier['NMUOP'],
+            }
+        )
+    
+
+class Sale(models.Model):
+    id = models.AutoField(primary_key= True)
+
+    cashier = models.ForeignKey(Cashier, on_delete= models.CASCADE, db_column= 'cashierId')
+
+    category = models.CharField()
+    costumer = models.CharField()
+    date = models.CharField()
+    legacyId = models.IntegerField()
+    time = models.CharField()
+    value = models.DecimalField(decimal_places= 2, max_digits= 10)
+
+    class Meta:
+        managed = False
+        db_table = 'Sale'
+
+    def __str__(self):
+        return f'#{self.legacyId} - {self.date} - {self.time} - {self.value} - {self.cashier}'
+    
+    def update_or_create(cashier, fetched_sale):
+        return Sale.objects.update_or_create(
+            cashier = cashier,
+            legacyId = fetched_sale['SQVENDA'],
+
+            defaults = {
+                'category': fetched_sale['DSCATEGORI'] if fetched_sale['DSCATEGORI'] else 'VENDA AVULSA',
+                'costumer': fetched_sale['NMCLIENTE'] if fetched_sale['NMCLIENTE'] else 'VENDA AVULSA',
+                'date': fetched_sale['DTVENDA'],
+                'time': fetched_sale['HRVENDA'],
+                'value': fetched_sale['VLRECEBIDO'].replace(',', '.'),
+            }
+        )
