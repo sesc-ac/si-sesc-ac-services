@@ -115,44 +115,43 @@ def cashiers(request):
             print(f'Sale {sale} {status}')
             print()
 
-            if status == 'Created':
-                print('Sale Items Post Data', cashier.legacyId, cashier.openDate, sale.legacyId, cashier.operatorId)
+            print('Sale Items Post Data', cashier.legacyId, cashier.openDate, sale.legacyId, cashier.operatorId)
 
-                # Fetching Sale Items Data
+            # Fetching Sale Items Data
 
-                response = fetchSaleItems(cashier.legacyId, cashier.openDate, sale.legacyId, cashier.operatorId)
+            response = fetchSaleItems(cashier.legacyId, cashier.openDate, sale.legacyId, cashier.operatorId)
 
-                if response.status_code != 200:
-                    print('Fetch Sale Items Error...')
-                    print()
-                    continue
+            if response.status_code != 200:
+                print('Fetch Sale Items Error...')
+                print()
+                continue
 
-                sales_items = response.json()
+            sales_items = response.json()
 
-                print('Sale Items Data Fetch OK')
+            print('Sale Items Data Fetch OK')
 
-                # Iterating over Sale Items Data
+            # Iterating over Sale Items Data
 
-                print('Iterating Over the List')
+            print('Iterating Over the List')
+            print()
+
+            for fetched_sale_item in sales_items:
+                print('Fetched Sale Item: ', fetched_sale_item)
                 print()
 
-                for fetched_sale_item in sales_items:
-                    print('Fetched Sale Item: ', fetched_sale_item)
-                    print()
+                # Update or created Sale Item
 
-                    # Update or created Sale Item
+                sale_item, created = SaleItem.update_or_create(sale, fetched_sale_item)
 
-                    sale_item, created = SaleItem.update_or_create(sale, fetched_sale_item)
+                if created:
+                    total_sales_items_created += 1
+                else:
+                    total_sales_items_updated += 1
 
-                    if created:
-                        total_sales_items_created += 1
-                    else:
-                        total_sales_items_updated += 1
+                status = 'Created' if created else 'Updated'
 
-                    status = 'Created' if created else 'Updated'
-
-                    print(f'Sale Item {sale_item} {status}')
-                    print()
+                print(f'Sale Item {sale_item} {status}')
+                print()
 
     return JsonResponse({
         'total_cashier_created': total_cashiers_created,

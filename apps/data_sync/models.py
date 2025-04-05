@@ -96,7 +96,7 @@ class SaleItem(models.Model):
         db_table = 'SaleItem'
 
     def __str__(self):
-        return f'#{self.id} - {self.sale} - {self.product} - {self.quantity} - {self.itemValue}'
+        return f'#{self.id} - {self.sale} - {self.product} - {self.productUnit} - {self.quantity} - {self.itemValue}'
     
     def update_or_create(sale, fetched_sale_item):
         return SaleItem.objects.update_or_create(
@@ -105,6 +105,6 @@ class SaleItem(models.Model):
             itemValue = fetched_sale_item['VLRECEBIDO'].replace(',', '.'),
             # legacyId = fetched_sale_item['SQITVENDA'],
             product = fetched_sale_item['DSPRODUTO'],
-            productUnit = fetched_sale_item['CDUNIDADE'],
+            productUnit = 'Hora' if fetched_sale_item['CDUNIDADE'].strip() == 'HS' else 'Grama' if fetched_sale_item['CDUNIDADE'].strip() == 'KG' else 'Unidade',
             quantity = int(float(fetched_sale_item['QTDPRODUTO'].replace(',', '.')) * 1000),
         )
