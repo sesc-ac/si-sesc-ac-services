@@ -1,10 +1,8 @@
 from django.http import JsonResponse
 from rest_framework.decorators import api_view
 from setup.settings import CUPONS_KEY
-# import requests
-from services.xamp_connection import fetchCashiers, fetchCashierSales
-# from datetime import datetime
-from .models import Cashier, Sale
+from services.xamp_connection import fetchCashiers, fetchCashierSales, fetchSaleItems
+from .models import Cashier, Sale, SaleItem
 
 @api_view(['POST'])
 def cashiers(request):
@@ -56,6 +54,12 @@ def cashiers(request):
     total_cashiers_created = 0
     total_cashiers_updated = 0
 
+    total_sales_created = 0
+    total_sales_updated = 0
+
+    total_sales_items_created = 0
+    total_sales_items_updated = 0
+
     for fetched_cashier in cashiers:
         print('Fetched Cashier: ', fetched_cashier)
 
@@ -73,14 +77,15 @@ def cashiers(request):
         print(f'Cashier {cashier} {status}')
         print()
         
-        print('Sales Post Data', cashier.legacyId, cashier.openDate, cashier.locationId)
+        print('Sales Post Data', cashier.legacyId, cashier.openDate, cashier.locationId, cashier.operatorId)
         
         # Fetching Sales Data
 
-        response = fetchCashierSales(cashier.legacyId, cashier.openDate, cashier.locationId)
+        response = fetchCashierSales(cashier.legacyId, cashier.openDate, cashier.locationId, cashier.operatorId)
 
         if response.status_code != 200:
-            print('Fetch Sale Error...')
+            print('Fetch Sales Error...')
+            print()
             continue
         
         sales = response.json()
@@ -91,9 +96,6 @@ def cashiers(request):
 
         print('Iterating Over the List')
         print()
-
-        total_sales_created = 0
-        total_sales_updated = 0
             
         for fetched_sale in sales:
             print('Fetched Sale: ', fetched_sale)
@@ -113,11 +115,52 @@ def cashiers(request):
             print(f'Sale {sale} {status}')
             print()
 
+            if status == 'Created':
+                print('Sale Items Post Data', cashier.legacyId, cashier.openDate, sale.legacyId, cashier.operatorId)
+
+                # Fetching Sale Items Data
+
+                response = fetchSaleItems(cashier.legacyId, cashier.openDate, sale.legacyId, cashier.operatorId)
+
+                if response.status_code != 200:
+                    print('Fetch Sale Items Error...')
+                    print()
+                    continue
+
+                sales_items = response.json()
+
+                print('Sale Items Data Fetch OK')
+
+                # Iterating over Sale Items Data
+
+                print('Iterating Over the List')
+                print()
+
+                for fetched_sale_item in sales_items:
+                    print('Fetched Sale Item: ', fetched_sale_item)
+                    print()
+
+                    # Update or created Sale Item
+
+                    sale_item, created = SaleItem.update_or_create(sale, fetched_sale_item)
+
+                    if created:
+                        total_sales_items_created += 1
+                    else:
+                        total_sales_items_updated += 1
+
+                    status = 'Created' if created else 'Updated'
+
+                    print(f'Sale Item {sale_item} {status}')
+                    print()
+
     return JsonResponse({
         'total_cashier_created': total_cashiers_created,
         'total_cashier_updated': total_cashiers_updated,
         'total_sales_created': total_sales_created,
         'total_sales_updated': total_sales_updated,
+        'total_sales_items_created': total_sales_items_created,
+        'total_sales_items_updated': total_sales_items_updated,
         'message': f'Sincronização de Caixas e Vendas realizada com sucesso!',
     })
 

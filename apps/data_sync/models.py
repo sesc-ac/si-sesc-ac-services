@@ -13,6 +13,7 @@ class Cashier(models.Model):
     openStatus = models.BooleanField()
     openTime = models.CharField()
     operator = models.CharField()
+    operatorId = models.IntegerField()
     totalSalesQuantity = models.IntegerField()
     totalSalesValue = models.DecimalField(decimal_places= 2, max_digits= 10)
     unit = models.CharField()
@@ -37,6 +38,7 @@ class Cashier(models.Model):
                 'openTime': fetched_cashier['HRABERTURA'],
                 'openStatus': fetched_cashier['STCAIXA'] == '0',
                 'operator': fetched_cashier['NMPESSOA'],
+                'operatorId': fetched_cashier['CDPESSOA'],
                 'totalSalesQuantity': fetched_cashier['QTDVENDAS'],
                 'totalSalesValue': fetched_cashier['TOTALVENDIDO'].replace(',', '.') if fetched_cashier['TOTALVENDIDO'] else 0,
                 'unit': fetched_cashier['NMUOP'],
@@ -75,4 +77,34 @@ class Sale(models.Model):
                 'time': fetched_sale['HRVENDA'],
                 'value': fetched_sale['VLRECEBIDO'].replace(',', '.'),
             }
+        )
+    
+
+class SaleItem(models.Model):
+    id = models.AutoField(primary_key= True)
+
+    sale = models.ForeignKey(Sale, on_delete= models.CASCADE, db_column= 'saleId')
+
+    itemValue = models.DecimalField(decimal_places= 2, max_digits= 10)
+    # legacyId = models.IntegerField()
+    product = models.CharField()
+    productUnit = models.CharField()
+    quantity = models.IntegerField()
+
+    class Meta:
+        managed = False
+        db_table = 'SaleItem'
+
+    def __str__(self):
+        return f'#{self.id} - {self.sale} - {self.product} - {self.quantity} - {self.itemValue}'
+    
+    def update_or_create(sale, fetched_sale_item):
+        return SaleItem.objects.update_or_create(
+            sale = sale,
+
+            itemValue = fetched_sale_item['VLRECEBIDO'].replace(',', '.'),
+            # legacyId = fetched_sale_item['SQITVENDA'],
+            product = fetched_sale_item['DSPRODUTO'],
+            productUnit = fetched_sale_item['CDUNIDADE'],
+            quantity = int(float(fetched_sale_item['QTDPRODUTO'].replace(',', '.')) * 1000),
         )
