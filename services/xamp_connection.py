@@ -30,6 +30,7 @@ def fetchCashierSales(legacy_id, open_date, location_id, operator_id):
         headers= headers
     )
 
+
 def fetchSaleItems(cashier_legacy_id, open_date, sale_legacy_id, operator_id):
     data = {
         'cashier': cashier_legacy_id,

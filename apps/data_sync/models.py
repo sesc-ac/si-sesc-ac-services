@@ -51,8 +51,9 @@ class Sale(models.Model):
 
     cashier = models.ForeignKey(Cashier, on_delete= models.CASCADE, db_column= 'cashierId')
 
-    category = models.CharField()
-    costumer = models.CharField()
+    costumer = models.CharField(null= True)
+    costumerCategory = models.CharField(null= True)
+    costumerCpf = models.CharField(null= True)
     date = models.CharField()
     legacyId = models.IntegerField()
     time = models.CharField()
@@ -71,8 +72,9 @@ class Sale(models.Model):
             legacyId = fetched_sale['SQVENDA'],
 
             defaults = {
-                'category': fetched_sale['DSCATEGORI'] if fetched_sale['DSCATEGORI'] else 'VENDA AVULSA',
-                'costumer': fetched_sale['NMCLIENTE'] if fetched_sale['NMCLIENTE'] else 'VENDA AVULSA',
+                'costumer': fetched_sale['NMCLIENTE'],
+                'costumerCategory': fetched_sale['DSCATEGORI'],
+                'costumerCpf': fetched_sale['NUCPF'],
                 'date': fetched_sale['DTVENDA'],
                 'time': fetched_sale['HRVENDA'],
                 'value': fetched_sale['VLRECEBIDO'].replace(',', '.'),
@@ -99,6 +101,11 @@ class SaleItem(models.Model):
         return f'#{self.id} - {self.sale} - {self.product} - {self.productUnit} - {self.quantity} - {self.itemValue}'
     
     def update_or_create(sale, fetched_sale_item):
+        if fetched_sale_item['CDUNIDADE'].strip() == 'KG':
+            quantity = int(float(fetched_sale_item['QTDPRODUTO'].replace(',', '.')) * 1000)
+        else:
+            quantity = int(float(fetched_sale_item['QTDPRODUTO'].replace(',', '.')))
+        
         return SaleItem.objects.update_or_create(
             sale = sale,
 
@@ -106,5 +113,5 @@ class SaleItem(models.Model):
             # legacyId = fetched_sale_item['SQITVENDA'],
             product = fetched_sale_item['DSPRODUTO'],
             productUnit = 'Hora' if fetched_sale_item['CDUNIDADE'].strip() == 'HS' else 'Grama' if fetched_sale_item['CDUNIDADE'].strip() == 'KG' else 'Unidade',
-            quantity = int(float(fetched_sale_item['QTDPRODUTO'].replace(',', '.')) * 1000),
+            quantity = quantity
         )
